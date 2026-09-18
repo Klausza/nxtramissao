@@ -1,5 +1,7 @@
 import { app, BrowserWindow, desktopCapturer, ipcMain, shell } from 'electron';
 import { execFile } from 'node:child_process';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
 import loopback from 'loopback-capture';
 
@@ -79,6 +81,21 @@ ipcMain.handle('audio:start-process', async (_event, handle: number) => {
   }
 });
 ipcMain.handle('audio:stop', () => { audioCapture?.stop(); audioCapture = undefined; });
+// O codigo da sala e derivado deste segredo, entao guarda-lo em disco e o que faz o link
+// sobreviver a restart do servidor e a reinstalacao do proprio app.
+function secretFile() { return path.join(app.getPath('userData'), 'room-secret'); }
+function roomSecret() {
+  try {
+    const saved = fs.readFileSync(secretFile(), 'utf8').trim();
+    if (saved.length >= 24) return saved;
+  } catch {}
+  const secret = crypto.randomBytes(32).toString('hex');
+  try { fs.mkdirSync(path.dirname(secretFile()), { recursive: true }); fs.writeFileSync(secretFile(), secret); } catch {}
+  return secret;
+}
+
+ipcMain.handle('config:room-secret', () => roomSecret());
+ipcMain.handle('config:rotate-room-secret', () => { try { fs.rmSync(secretFile(), { force: true }); } catch {} return roomSecret(); });
 ipcMain.handle('shell:open-external', (_event, url: string) => shell.openExternal(url));
 ipcMain.handle('config:public-url', () => publicUrl.replace(/\/$/, ''));
 
