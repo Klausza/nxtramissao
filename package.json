@@ -1,0 +1,44 @@
+{
+  "name": "internet-screen-share",
+  "version": "1.0.0",
+  "description": "Internet screen sharing with Electron, WebRTC and public signaling",
+  "main": "dist/electron/main.js",
+  "scripts": {
+    "dev": "npm run build && concurrently -k \"tsx server/src/index.ts\" \"electron .\"",
+    "build": "npm run clean && npm run build:server && npm run build:electron && npm run build:web",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "build:web": "esbuild web/src/viewer.ts --bundle --platform=browser --format=iife --outfile=dist/web/viewer.js && copyfiles -u 1 web/public/* dist/web && copyfiles -u 1 electron/host.html electron/host.css dist/electron",
+    "clean": "rimraf dist",
+    "start": "node dist/server/index.js",
+    "package:win": "npm run build && electron-builder --win nsis",
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.7",
+    "@types/ws": "^8.5.13",
+    "concurrently": "^9.1.2",
+    "copyfiles": "^2.4.1",
+    "electron": "^34.0.0",
+    "electron-builder": "^25.1.8",
+    "esbuild": "^0.24.2",
+    "eslint": "^9.17.0",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "build": {
+    "appId": "com.example.internetscreenshare",
+    "productName": "Internet Screen Share",
+    "files": ["dist/electron/**/*", "package.json"],
+    "win": { "target": "nsis", "signAndEditExecutable": false },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
+  }
+}

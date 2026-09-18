@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: internet-screen-share
+    runtime: docker
+    plan: free
+    envVars:
+      - key: PUBLIC_URL
+        sync: false
+      - key: TURN_URL
+        sync: false
+      - key: TURN_USERNAME
+        sync: false
+      - key: TURN_CREDENTIAL
+        sync: false

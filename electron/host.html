@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Internet Screen Share</title><link rel="stylesheet" href="host.css"></head>
+<body>
+  <main class="shell">
+    <header><div><p class="eyebrow">TRANSMISSÃO PRIVADA</p><h1>Internet Screen Share</h1><p class="subtitle">Compartilhe sua tela pela internet, sem LAN, VPN ou portas abertas.</p></div><button id="netflix" class="secondary">Abrir Netflix</button></header>
+    <section class="workspace">
+      <div class="preview-panel"><div class="panel-heading"><span>Prévia da fonte</span><span id="sourceLabel">Nenhuma fonte selecionada</span></div><video id="preview" autoplay muted playsinline></video><div id="captureNotice" class="notice hidden">Este conteúdo está protegido contra captura pelo sistema ou pelo provedor de conteúdo.</div></div>
+      <aside class="controls"><label>Qualidade<select id="quality"><option value="720p30">720p 30 FPS</option><option value="1080p30">1080p 30 FPS</option><option value="1080p60">1080p 60 FPS</option></select></label><label>Áudio<select id="audioMode"><option value="system">Áudio completo do sistema</option><option value="app">Áudio da janela selecionada</option><option value="none">Sem áudio</option></select></label><button id="selectSource" class="primary">Selecionar tela</button><button id="createRoom" class="primary">Criar sala</button><button id="start" class="accent" disabled>Iniciar transmissão</button><button id="stop" class="danger" disabled>Parar transmissão</button><div class="room-box"><span>Código da sala</span><strong id="roomCode">------</strong><div><button id="copyCode" class="small" disabled>Copiar código</button><button id="copyLink" class="small" disabled>Copiar link</button></div></div></aside>
+    </section>
+    <section class="status-grid"><div><b>Microfone</b><span class="ok">NÃO CAPTURADO</span></div><div><b>Áudio do PC</b><span id="audioStatus">DESATIVADO</span></div><div><b>Tela</b><span id="screenStatus">PARADA</span></div><div><b>Internet</b><span id="connectionStatus">DESCONECTADO</span></div><div><b>Espectadores</b><span id="viewerCount">0</span></div></section>
+    <section id="sourcePicker" class="picker hidden"><div class="picker-card"><div class="panel-heading"><span>Escolha uma tela ou janela</span><button id="closePicker" class="icon">×</button></div><div id="sources" class="sources"></div></div></section>
+    <p id="message" class="message"></p>
+  </main><script src="renderer.js"></script>
+</body></html>
