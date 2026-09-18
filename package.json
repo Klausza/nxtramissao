@@ -4,7 +4,7 @@
   "description": "Internet screen sharing with Electron, WebRTC and public signaling",
   "main": "dist/electron/main.js",
   "scripts": {
-    "dev": "npm run build && concurrently -k \"tsx server/src/index.ts\" \"electron .\"",
+    "dev": "set PUBLIC_URL=http://localhost:8080&& npm run build && concurrently -k \"tsx server/src/index.ts\" \"electron .\"",
     "build": "npm run clean && npm run build:server && npm run build:electron && npm run build:web",
     "build:server": "tsc -p tsconfig.server.json",
     "build:electron": "tsc -p tsconfig.electron.json",

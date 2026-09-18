@@ -1,7 +1,7 @@
 import { app, BrowserWindow, desktopCapturer, ipcMain, shell } from 'electron';
 import path from 'node:path';
 
-const publicUrl = process.env.PUBLIC_URL || (process.env.NODE_ENV === 'production' ? 'https://stream.example.com' : 'http://localhost:8080');
+const publicUrl = process.env.PUBLIC_URL || 'https://nxtramissao.onrender.com';
 
 function createWindow(): void {
   const window = new BrowserWindow({
