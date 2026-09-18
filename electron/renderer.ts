@@ -21,10 +21,12 @@ function syncAudioModeForSource() {
   const select = $('audioMode') as HTMLSelectElement;
   const appOption = select.querySelector<HTMLOptionElement>('option[value="app"]');
   if (!appOption) return;
-  const isWindow = Boolean(selected?.handle);
-  appOption.disabled = !isWindow;
-  appOption.textContent = isWindow ? 'Áudio da janela selecionada' : 'Áudio da janela selecionada (escolha uma janela)';
-  if (!isWindow && select.value === 'app') {
+  // So trava quando a fonte atual e comprovadamente uma tela. Sem nada selecionado a
+  // opcao fica livre, senao ela nasce cinza e parece indisponivel.
+  const isScreen = Boolean(selected) && !selected!.handle;
+  appOption.disabled = isScreen;
+  appOption.textContent = isScreen ? 'Áudio da janela selecionada (a fonte atual é uma tela)' : 'Áudio da janela selecionada';
+  if (isScreen && select.value === 'app') {
     select.value = 'system';
     notify('Tela inteira não tem áudio por janela. Troquei para áudio do sistema; para o som só do Opera, selecione a janela dele.');
   }
@@ -36,7 +38,7 @@ $('netflix').addEventListener('click', () => window.screenShare.openExternal('ht
 $('createRoom').addEventListener('click', async () => { if (!selected) return notify('Selecione uma tela ou janela antes de criar a sala.'); publicUrl = await window.screenShare.publicUrl(); connectHost(false); });
 $('start').addEventListener('click', async () => { if (!selected || !code) return; if (await refreshCapture()) { startButton.disabled = true; stopButton.disabled = false; send({ type: 'start' }); } });
 $('quality').addEventListener('change', () => { void refreshCapture(); });
-$('audioMode').addEventListener('change', () => { void refreshCapture(); });
+$('audioMode').addEventListener('change', () => { if (($('audioMode') as HTMLSelectElement).value === 'app' && !selected) { notify('Escolha a janela em "Selecionar tela" para o áudio dela entrar na transmissão.'); $('selectSource').click(); return; } void refreshCapture(); });
 $('stop').addEventListener('click', () => { stream?.getTracks().forEach((track) => track.stop()); stream = undefined; preview.srcObject = null; peers.forEach((peer) => peer.close()); peers.clear(); send({ type: 'stop' }); screenStatus.textContent = 'PARADA'; audioStatus.textContent = 'DESATIVADO'; startButton.disabled = false; stopButton.disabled = true; });
 $('copyCode').addEventListener('click', () => navigator.clipboard.writeText(code)); $('copyLink').addEventListener('click', () => navigator.clipboard.writeText(`${publicUrl}/watch/${code}`));
 async function captureProcessAudio() { if (!selected) return undefined; if (!selected.handle) { notify('Tela inteira nao tem audio por aplicativo. Escolha a janela, ou troque para audio do sistema.'); return undefined; } const started = await window.screenShare.startProcessAudio(selected.handle); if (!started?.ok) { notify(started?.message || 'Nao consegui capturar o audio desta janela.'); return undefined; } processAudioContext?.close(); processAudioContext = new AudioContext({ sampleRate: 48000 }); await processAudioContext.audioWorklet.addModule('audio-worklet.js'); processAudioNode = new AudioWorkletNode(processAudioContext, 'pcm-worklet', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] }); processAudioDestination = processAudioContext.createMediaStreamDestination(); processAudioNode.connect(processAudioDestination); removeAudioListener?.(); removeAudioListener = window.screenShare.onAudioChunk((chunk) => { const copy = new Uint8Array(chunk).buffer; processAudioNode?.port.postMessage(copy, [copy]); }); return processAudioDestination.stream.getAudioTracks()[0]; }
