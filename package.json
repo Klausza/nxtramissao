@@ -8,7 +8,7 @@
     "build": "npm run clean && npm run build:server && npm run build:electron && npm run build:web",
     "build:server": "tsc -p tsconfig.server.json",
     "build:electron": "tsc -p tsconfig.electron.json",
-    "build:web": "esbuild web/src/viewer.ts --bundle --platform=browser --format=iife --outfile=dist/web/viewer.js && esbuild electron/renderer.ts --bundle --platform=browser --format=iife --outfile=dist/electron/renderer.js && copyfiles -u 2 web/public/* dist/web && copyfiles -u 1 electron/host.html electron/host.css dist/electron",
+    "build:web": "esbuild web/src/viewer.ts --bundle --platform=browser --format=iife --outfile=dist/web/viewer.js && esbuild electron/renderer.ts --bundle --platform=browser --format=iife --outfile=dist/electron/renderer.js && copyfiles -u 2 web/public/* dist/web && copyfiles -u 1 electron/host.html electron/host.css electron/audio-worklet.js dist/electron",
     "clean": "rimraf dist",
     "start": "node dist/server/index.js",
     "package:win": "npm run build && electron-builder --win nsis",
@@ -18,6 +18,7 @@
   "dependencies": {
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "loopback-capture": "^3.0.2",
     "ws": "^8.18.0"
   },
   "devDependencies": {
@@ -37,8 +38,17 @@
   "build": {
     "appId": "com.example.internetscreenshare",
     "productName": "Internet Screen Share",
-    "files": ["dist/electron/**/*", "package.json"],
-    "win": { "target": "nsis", "signAndEditExecutable": false },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
+    "files": [
+      "dist/electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
