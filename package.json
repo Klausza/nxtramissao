@@ -8,7 +8,7 @@
     "build": "npm run clean && npm run build:server && npm run build:electron && npm run build:web",
     "build:server": "tsc -p tsconfig.server.json",
     "build:electron": "tsc -p tsconfig.electron.json",
-    "build:web": "esbuild web/src/viewer.ts --bundle --platform=browser --format=iife --outfile=dist/web/viewer.js && copyfiles -u 2 web/public/* dist/web && copyfiles -u 1 electron/host.html electron/host.css dist/electron",
+    "build:web": "esbuild web/src/viewer.ts --bundle --platform=browser --format=iife --outfile=dist/web/viewer.js && esbuild electron/renderer.ts --bundle --platform=browser --format=iife --outfile=dist/electron/renderer.js && copyfiles -u 2 web/public/* dist/web && copyfiles -u 1 electron/host.html electron/host.css dist/electron",
     "clean": "rimraf dist",
     "start": "node dist/server/index.js",
     "package:win": "npm run build && electron-builder --win nsis",
