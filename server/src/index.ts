@@ -13,22 +13,33 @@ const wss = new WebSocketServer({ server, maxPayload: 64 * 1024 });
 const rooms = new Map<string, { host: WebSocket | null; token: string; viewers: Map<WebSocket, string> }>();
 const attempts = new Map<string, { count: number; reset: number }>();
 const codePattern = /^[A-Z2-9]{6}$/;
+const defaultStun = ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'];
 
 app.use(express.static(path.join(__dirname, '../web')));
 app.get('/watch/:code', (_req, res) => res.sendFile(path.join(__dirname, '../web/index.html')));
-app.get('/api/config', (_req, res) => res.json({ publicUrl, iceServers: iceServers() }));
+app.get('/api/config', (_req, res) => res.json({ publicUrl, iceServers: iceServers(), relay: Boolean(turnConfig()) }));
 app.get('*', (_req, res) => res.sendFile(path.join(__dirname, '../web/index.html')));
 
+function list(value: string | undefined) { return (value || '').split(',').map((entry) => entry.trim()).filter(Boolean); }
+
+// TURN_URLS aceita varios enderecos separados por virgula (udp, tcp e turns na mesma
+// credencial). TURN_URL continua valendo para nao quebrar quem ja tem a variavel antiga.
+function turnConfig() {
+  const urls = list(process.env.TURN_URLS || process.env.TURN_URL);
+  if (!urls.length || !process.env.TURN_USERNAME || !process.env.TURN_CREDENTIAL) return undefined;
+  return { urls, username: process.env.TURN_USERNAME, credential: process.env.TURN_CREDENTIAL };
+}
+
 function iceServers() {
-  const servers: Array<{ urls: string | string[]; username?: string; credential?: string }> = [{ urls: 'stun:stun.l.google.com:19302' }];
-  if (process.env.TURN_URL && process.env.TURN_USERNAME && process.env.TURN_CREDENTIAL) {
-    servers.push({ urls: process.env.TURN_URL, username: process.env.TURN_USERNAME, credential: process.env.TURN_CREDENTIAL });
-  }
+  const stun = list(process.env.STUN_URLS).length ? list(process.env.STUN_URLS) : defaultStun;
+  const servers: Array<{ urls: string | string[]; username?: string; credential?: string }> = [{ urls: stun }];
+  const turn = turnConfig();
+  if (turn) servers.push(turn);
   return servers;
 }
 function send(socket: WebSocket, message: unknown) { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message)); }
 function newCode() { let code = ''; do { code = crypto.randomBytes(4).toString('base64').replace(/[^A-Z2-9]/gi, '').toUpperCase().slice(0, 6); } while (code.length < 6 || rooms.has(code)); return code; }
-function countAttempt(ip: string) { const now = Date.now(); const current = attempts.get(ip); if (!current || current.reset < now) { attempts.set(ip, { count: 1, reset: now + 60_000 }); return true; } current.count += 1; return current.count <= 30; }
+function countAttempt(ip: string) { const now = Date.now(); if (attempts.size > 5000) for (const [key, value] of attempts) if (value.reset < now) attempts.delete(key); const current = attempts.get(ip); if (!current || current.reset < now) { attempts.set(ip, { count: 1, reset: now + 60_000 }); return true; } current.count += 1; return current.count <= 30; }
 
 wss.on('connection', (socket, request) => {
   const forwardedFor = request.headers['x-forwarded-for'];
@@ -51,4 +62,7 @@ wss.on('connection', (socket, request) => {
   });
   socket.on('close', () => { clearInterval(heartbeat); if (!roomCode) return; const room = rooms.get(roomCode); if (!room) return; if (role === 'host') { if (room.host === socket) room.host = null; room.viewers.forEach((_, viewer) => send(viewer, { type: 'host-offline' })); setTimeout(() => { if (room.host === null) rooms.delete(roomCode!); }, 30000); } else { room.viewers.delete(socket); if (room.host) send(room.host, { type: 'viewer-left', count: room.viewers.size }); } });
 });
-server.listen(port, () => console.log(`Screen share server listening on ${publicUrl}`));
+server.listen(port, () => {
+  console.log(`Screen share server listening on ${publicUrl}`);
+  if (!turnConfig()) console.warn('AVISO: TURN nao configurado. Defina TURN_URLS, TURN_USERNAME e TURN_CREDENTIAL. Sem relay, quem estiver atras de NAT simetrico ou CGNAT (4G/5G, rede corporativa) nao consegue assistir.');
+});

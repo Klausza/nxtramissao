@@ -25,11 +25,15 @@ Copie `.env.example` para `.env` no servidor:
 ```env
 PUBLIC_URL=https://stream.seudominio.com
 PORT=8080
-TURN_URL=turn:turn.seudominio.com:3478
+TURN_URLS=turn:turn.seudominio.com:3478,turns:turn.seudominio.com:5349
 TURN_USERNAME=usuario-turn
 TURN_CREDENTIAL=credencial-turn
 NODE_ENV=production
 ```
+
+`TURN_URLS` aceita varios enderecos separados por virgula usando a mesma credencial. A
+variavel antiga `TURN_URL` continua sendo lida. `STUN_URLS` e opcional; sem ela o
+servidor usa os STUN publicos do Google.
 
 Coloque o proxy HTTPS na frente do Node (por exemplo, Render, Railway, Fly.io, Caddy ou Nginx). O WebSocket deve ser encaminhado como WSS. O Electron usa `PUBLIC_URL` no ambiente em que for iniciado; para uma distribuicao, defina essa variavel antes de abrir o app.
 
@@ -56,6 +60,19 @@ Para um primeiro deploy, `TURN_USERNAME` e `TURN_CREDENTIAL` podem ser credencia
 - `render.yaml` fornece uma base para Render.
 - Railway e Fly.io podem usar o mesmo Dockerfile.
 - Configure DNS `stream.seudominio.com` apontando para o servico e ative HTTPS automatico.
+
+### Checklist do Render
+
+As variaveis marcadas como `sync: false` no `render.yaml` **nao vem preenchidas**: elas
+precisam ser digitadas em Environment no painel do servico. Confira o que esta valendo em
+`/api/config` — se a resposta trouxer `"relay": false`, o TURN nao esta configurado e o
+servidor tambem registra um aviso no log ao subir.
+
+O plano `free` hiberna o servico depois de cerca de 15 minutos sem trafego, e todo
+restart (hibernacao ou deploy) **apaga as salas**, porque elas so existem em memoria. O
+app do transmissor detecta isso, cria uma sala nova automaticamente e mostra o codigo
+novo, mas o link antigo deixa de funcionar e precisa ser reenviado. Para transmissao
+continua, use um plano que nao hiberne.
 
 ## Fluxo
 

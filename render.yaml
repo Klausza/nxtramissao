@@ -6,7 +6,9 @@ services:
     envVars:
       - key: PUBLIC_URL
         sync: false
-      - key: TURN_URL
+      # Sem as tres variaveis de TURN o servico sobe so com STUN: funciona em rede
+      # domestica e falha para quem estiver atras de NAT simetrico ou CGNAT.
+      - key: TURN_URLS
         sync: false
       - key: TURN_USERNAME
         sync: false
