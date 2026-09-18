@@ -46,6 +46,10 @@ wss.on('connection', (socket, request) => {
   const ip = (typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : request.socket.remoteAddress) || 'unknown';
   let role: 'host' | 'viewer' | undefined; let roomCode: string | undefined; let viewerId: string | undefined;
   let alive = true;
+  // Sem este handler o EventEmitter transforma qualquer erro de socket em excecao nao
+  // tratada e derruba o processo inteiro, junto com todas as transmissoes no ar. O
+  // proprio maxPayload acima e uma dessas fontes: frame maior que o limite emite 'error'.
+  socket.on('error', (error) => { console.warn(`Socket ${ip} encerrado por erro: ${error.message}`); socket.terminate(); });
   socket.on('pong', () => { alive = true; });
   const heartbeat = setInterval(() => { if (!alive) return socket.terminate(); alive = false; socket.ping(); }, 20000);
   socket.on('message', (raw) => {
@@ -62,6 +66,15 @@ wss.on('connection', (socket, request) => {
   });
   socket.on('close', () => { clearInterval(heartbeat); if (!roomCode) return; const room = rooms.get(roomCode); if (!room) return; if (role === 'host') { if (room.host === socket) room.host = null; room.viewers.forEach((_, viewer) => send(viewer, { type: 'host-offline' })); setTimeout(() => { if (room.host === null) rooms.delete(roomCode!); }, 30000); } else { room.viewers.delete(socket); if (room.host) send(room.host, { type: 'viewer-left', count: room.viewers.size }); } });
 });
+wss.on('error', (error) => console.error(`Erro no WebSocketServer: ${error.message}`));
+server.on('clientError', (error, socket) => { console.warn(`Erro de cliente HTTP: ${error.message}`); socket.destroy(); });
+
+// Rede de seguranca: uma instancia so atende todas as salas, e elas vivem em memoria.
+// Derrubar o processo por um erro isolado de um cliente custa toda transmissao no ar e
+// invalida todos os codigos, entao aqui a escolha e registrar e seguir de pe.
+process.on('uncaughtException', (error) => console.error('uncaughtException:', error));
+process.on('unhandledRejection', (reason) => console.error('unhandledRejection:', reason));
+
 server.listen(port, () => {
   console.log(`Screen share server listening on ${publicUrl}`);
   if (!turnConfig()) console.warn('AVISO: TURN nao configurado. Defina TURN_URLS, TURN_USERNAME e TURN_CREDENTIAL. Sem relay, quem estiver atras de NAT simetrico ou CGNAT (4G/5G, rede corporativa) nao consegue assistir.');
