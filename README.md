@@ -37,6 +37,30 @@ servidor usa os STUN publicos do Google.
 
 Coloque o proxy HTTPS na frente do Node (por exemplo, Render, Railway, Fly.io, Caddy ou Nginx). O WebSocket deve ser encaminhado como WSS. O Electron usa `PUBLIC_URL` no ambiente em que for iniciado; para uma distribuicao, defina essa variavel antes de abrir o app.
 
+## Diagnostico de rede
+
+Antes de culpar o TURN, veja de que tipo e a sua NAT:
+
+```powershell
+npm run check:nat
+```
+
+Ele manda Binding requests pela mesma porta local para varios STUN. Se os tres devolverem
+o mesmo endereco, a NAT nao e simetrica e o STUN sozinho conecta; se devolverem enderecos
+diferentes, e simetrica e o relay passa a ser obrigatorio. Vale rodar dos dois lados: quem
+transmite pode estar numa rede tranquila e quem assiste nao.
+
+Ja com um TURN em maos, valide antes de confiar nele:
+
+```powershell
+npm run check:turn -- turn.seuprovedor.com 3478 usuario credencial
+```
+
+O script faz um Allocate real (RFC 5766, com MESSAGE-INTEGRITY) e so responde OK se o
+servidor devolver um endereco de relay. Credencial expirada aparece como `401`, e servidor
+fora do ar como timeout. Um `"relay": false` em `/api/config` significa que as tres
+variaveis nao chegaram no processo.
+
 ## TURN com Coturn
 
 Use credenciais temporarias em producao, geradas por um pequeno endpoint autenticado ou por um provedor TURN gerenciado. As variaveis acima sao lidas apenas pelo servidor e retornadas na negociacao ICE; nao inclua segredos no codigo fonte do cliente. Um exemplo minimo de Coturn:

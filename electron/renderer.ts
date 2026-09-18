@@ -61,4 +61,24 @@ function connectHost(resume: boolean) { resuming = resume; const url = new URL(p
 async function handle(msg: any) { if (msg.type === 'error') return handleServerError(msg); if (msg.type === 'room-created') { resuming = false; code = msg.code; roomToken = msg.token; roomCode.textContent = code; connectionStatus.textContent = 'CONECTADO'; connectionStatus.className = 'ok'; $('copyCode').removeAttribute('disabled'); $('copyLink').removeAttribute('disabled'); startButton.disabled = Boolean(stream); stopButton.disabled = !stream; $('createRoom').setAttribute('disabled', 'true'); notify(recreated ? `A sala anterior expirou. Use o codigo novo ${code} e reenvie ${publicUrl}/watch/${code}` : `Compartilhe ${publicUrl}/watch/${code}`); recreated = false; } if (msg.type === 'room-resumed') { resuming = false; connectionStatus.textContent = 'CONECTADO'; connectionStatus.className = 'ok'; notify(`Sala reconectada: ${publicUrl}/watch/${code}`); } if (msg.type === 'viewer-joined') { viewerCount.textContent = String(Number(viewerCount.textContent) + 1); await createPeer(msg.viewerId, msg.iceServers); } if (msg.type === 'answer') { const peer = peers.get(msg.viewerId) || [...peers.values()][0]; if (peer) await peer.setRemoteDescription(msg.description); } if (msg.type === 'ice') { const peer = peers.get(msg.viewerId) || [...peers.values()][0]; if (peer && msg.candidate) await peer.addIceCandidate(msg.candidate); } if (msg.type === 'viewer-left') viewerCount.textContent = String(msg.count); }
 function hostHasRelay(servers: RTCIceServer[]) { return (servers || []).some((server) => [server.urls].flat().some((url) => /^turns?:/i.test(String(url)))); }
 async function sendOffer(peer: RTCPeerConnection, viewerId: string) { const offer = await peer.createOffer(); await peer.setLocalDescription(offer); send({ type: 'offer', viewerId, description: peer.localDescription }); }
-async function createPeer(viewerId: string, iceServers: RTCIceServer[]) { if (!stream) return; const peer = new RTCPeerConnection({ iceServers }); peers.set(viewerId, peer); stream.getTracks().forEach((track) => peer.addTrack(track, stream!)); peer.onicecandidate = (event) => event.candidate && send({ type: 'ice', viewerId, candidate: event.candidate }); peer.onconnectionstatechange = () => { if (peer.connectionState === 'failed') { notify(hostHasRelay(iceServers) ? 'Falha ICE com um espectador. Renegociando...' : 'Falha ICE. O servidor esta sem TURN e o espectador provavelmente esta atras de NAT simetrico ou CGNAT.'); peer.restartIce(); } }; await sendOffer(peer, viewerId); /* restartIce() so troca as credenciais da PROXIMA oferta, entao a renegociacao precisa sair por aqui para a recuperacao valer de algo. Assinado depois da oferta inicial para nao duplica-la. */ peer.onnegotiationneeded = () => { void sendOffer(peer, viewerId); }; }
+async function createPeer(viewerId: string, iceServers: RTCIceServer[]) {
+  if (!stream) return;
+  const peer = new RTCPeerConnection({ iceServers });
+  peers.set(viewerId, peer);
+  stream.getTracks().forEach((track) => peer.addTrack(track, stream!));
+  peer.onicecandidate = (event) => event.candidate && send({ type: 'ice', viewerId, candidate: event.candidate });
+  peer.onconnectionstatechange = () => {
+    if (peer.connectionState !== 'failed') return;
+    notify(hostHasRelay(iceServers)
+      ? 'Falha ICE com um espectador. Renegociando...'
+      : 'Falha ICE com um espectador. O servidor esta sem TURN: se ele estiver em rede movel ou corporativa, so um relay resolve.');
+    peer.restartIce();
+  };
+  // restartIce() so troca as credenciais da PROXIMA oferta, entao a renegociacao precisa
+  // sair por aqui para a recuperacao valer de algo. A trava cobre a oferta inicial: o
+  // addTrack acima ja agenda um negotiationneeded, e sem ela sairiam duas ofertas.
+  let negotiating = true;
+  peer.onnegotiationneeded = () => { if (!negotiating) void sendOffer(peer, viewerId); };
+  await sendOffer(peer, viewerId);
+  negotiating = false;
+}

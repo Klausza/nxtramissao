@@ -12,6 +12,8 @@
     "clean": "rimraf dist",
     "start": "node dist/server/index.js",
     "package:win": "npm run build && electron-builder --win nsis",
+    "check:turn": "node scripts/check-turn.mjs",
+    "check:nat": "node scripts/check-nat.mjs",
     "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "lint": "eslint ."
   },
