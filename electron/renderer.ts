@@ -12,9 +12,25 @@ const message = $('message'); const roomCode = $('roomCode'); const connectionSt
 const audioStatus = $('audioStatus'); const screenStatus = $('screenStatus'); const startButton = $('start') as HTMLButtonElement; const stopButton = $('stop') as HTMLButtonElement;
 let selected: Source | undefined; let stream: MediaStream | undefined; let socket: WebSocket; let publicUrl = ''; let code = ''; let roomToken = ''; let resuming = false; let recreated = false; let reconnectTimer: ReturnType<typeof setTimeout> | undefined; let processAudioContext: AudioContext | undefined; let processAudioNode: AudioWorkletNode | undefined; let processAudioDestination: MediaStreamAudioDestinationNode | undefined; let removeAudioListener: (() => void) | undefined; const peers = new Map<string, RTCPeerConnection>();
 const qualities: Record<string, Quality> = { '720p30': { width: 1280, height: 720, frameRate: 30 }, '1080p30': { width: 1920, height: 1080, frameRate: 30 }, '1080p60': { width: 1920, height: 1080, frameRate: 60 } };
+queueMicrotask(() => syncAudioModeForSource());
 function notify(text: string) { message.textContent = text; }
+
+// Audio por janela depende do HWND, que so existe em fonte do tipo janela. Com uma tela
+// inteira selecionada a opcao vira um beco sem saida: transmite video e nenhum som.
+function syncAudioModeForSource() {
+  const select = $('audioMode') as HTMLSelectElement;
+  const appOption = select.querySelector<HTMLOptionElement>('option[value="app"]');
+  if (!appOption) return;
+  const isWindow = Boolean(selected?.handle);
+  appOption.disabled = !isWindow;
+  appOption.textContent = isWindow ? 'Áudio da janela selecionada' : 'Áudio da janela selecionada (escolha uma janela)';
+  if (!isWindow && select.value === 'app') {
+    select.value = 'system';
+    notify('Tela inteira não tem áudio por janela. Troquei para áudio do sistema; para o som só do Opera, selecione a janela dele.');
+  }
+}
 function send(value: unknown) { if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(value)); }
-$('selectSource').addEventListener('click', async () => { sources.innerHTML = ''; for (const source of await window.screenShare.listSources()) { const button = document.createElement('button'); button.className = 'source'; button.innerHTML = `<img src="${source.thumbnail}" alt=""><span>${source.name}</span>`; button.onclick = async () => { selected = source; sourceLabel.textContent = source.name; picker.classList.add('hidden'); await refreshCapture(); }; sources.appendChild(button); } picker.classList.remove('hidden'); });
+$('selectSource').addEventListener('click', async () => { sources.innerHTML = ''; for (const source of await window.screenShare.listSources()) { const button = document.createElement('button'); button.className = 'source'; button.innerHTML = `<img src="${source.thumbnail}" alt=""><span>${source.name}</span>`; button.onclick = async () => { selected = source; sourceLabel.textContent = source.name; picker.classList.add('hidden'); syncAudioModeForSource(); await refreshCapture(); }; sources.appendChild(button); } picker.classList.remove('hidden'); });
 $('closePicker').addEventListener('click', () => picker.classList.add('hidden'));
 $('netflix').addEventListener('click', () => window.screenShare.openExternal('https://www.netflix.com/'));
 $('createRoom').addEventListener('click', async () => { if (!selected) return notify('Selecione uma tela ou janela antes de criar a sala.'); publicUrl = await window.screenShare.publicUrl(); connectHost(false); });
