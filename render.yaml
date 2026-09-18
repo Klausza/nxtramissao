@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: internet-screen-share
+    name: nxtramissao
     runtime: docker
     plan: free
     envVars:
